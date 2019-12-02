@@ -1,0 +1,15 @@
+*.user
+*.user.*
+build-src*
+bin*
+*build-*
+*.QMCvio
+*.autosave
+*/http.h
+*/http.cpp
+*/myfunctions.h
+*/myfunctions.cpp
+build/*
+*.qmake.stash
+*/qrc_resources.cpp
+*/Makefile
