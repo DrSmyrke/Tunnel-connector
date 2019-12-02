@@ -21,7 +21,8 @@ TEMPLATE = app
 
 SOURCES += main.cpp \
     global.cpp \
-    myfunctions.cpp
+    myfunctions.cpp \
+    server.cpp
 
 # Check if the git version file exists
 ! include(./gitversion.pri) {
@@ -33,4 +34,5 @@ SOURCES += main.cpp \
 
 HEADERS += \
     global.h \
-    myfunctions.h
+    myfunctions.h \
+    server.h
