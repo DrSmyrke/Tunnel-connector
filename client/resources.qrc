@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/">
+        <file>index.ico</file>
+        <file>Terminus.ttf</file>
+    </qresource>
+</RCC>

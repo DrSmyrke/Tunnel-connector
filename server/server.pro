@@ -13,7 +13,7 @@ OBJECTS_DIR         = ../build/obj/$${CONFIGURATION}
 MOC_DIR             = ../build/$${CONFIGURATION}
 RCC_DIR             = ../build
 UI_DIR              = ../build/ui
-DESTDIR             = ../bin
+DESTDIR             = ../bin/server
 
 QMAKE_CXXFLAGS += "-std=c++11"
 

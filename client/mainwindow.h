@@ -2,10 +2,9 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include <QSerialPort>
-#include <QLabel>
+#include <QTcpSocket>
+#include <QTimer>
 #include "global.h"
-#include "hexviewer.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -16,22 +15,28 @@ class MainWindow : public QMainWindow
 	Q_OBJECT
 
 public:
+	struct StatusState
+	{
+		enum{
+			normal = 1,
+			processing,
+			warning,
+			error
+		};
+	};
 	MainWindow(QWidget *parent = nullptr);
 	~MainWindow();
 private slots:
 	void slot_readyRead();
-	void slot_sendMess();
-	void slot_textChanged(const QString &text);
+	void slot_connect();
+	void slot_stateChange(const QAbstractSocket::SocketState socketState);
+	void slot_timer();
 private:
 	Ui::MainWindow *ui;
-	QSerialPort* m_pSPort;
-	QLabel* m_pPortLabel;
-	QLabel* m_pPortError;
-	HexViewer* m_pHexViewer;
+	QTcpSocket* m_pControlSocket;
+	QTimer* m_pTimer;
 
-	void rescanPorts();
-	bool checkPort(const QString &port);
 	void sendData(const QByteArray &data);
-	void hexReMask(uint8_t num = 1);
+	QString setColorText(const QString &text, const uint8_t state = 0);
 };
 #endif // MAINWINDOW_H
