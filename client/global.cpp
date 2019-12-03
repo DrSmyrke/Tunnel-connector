@@ -12,9 +12,8 @@ namespace app {
 	{
 		QSettings settings( "MySoft", app::conf.appName );
 
-		auto addr = settings.value( "SERVER/port", "0.0.0.0").toString();
-		app::conf.server.port = settings.value( "SERVER/port", app::conf.server.port ).toUInt();
-		app::conf.server.ip.setAddress( addr );
+		app::conf.server		= settings.value( "SERVER/server", app::conf.server ).toString();
+		app::conf.user.login	= settings.value( "USER/login", app::conf.user.login ).toUInt();
 	}
 
 	void saveSettings()
@@ -22,8 +21,8 @@ namespace app {
 		QSettings settings( "MySoft", app::conf.appName );
 		settings.clear();
 
-		settings.setValue( "SERVER/ip",		app::conf.server.ip.toString() );
-		settings.setValue( "SERVER/port",	app::conf.server.port );
+		settings.setValue( "SERVER/server",	app::conf.server );
+		settings.setValue( "USER/login",	app::conf.user.login );
 	}
 
 	bool parsArgs(int argc, char *argv[])
@@ -71,80 +70,4 @@ namespace app {
 			f.close();
 		}
 	}
-
-	void loadUsers()
-	{
-		if( app::conf.usersFile.isEmpty() ){
-			app::setLog( 2, QString("LOAD USER FILE [%1] ... ERROR not defined").arg( app::conf.usersFile ) );
-			return;
-		}
-
-		if( !mf::checkFile( app::conf.usersFile ) ){
-			app::setLog( 2, QString("LOAD USER FILE [%1] ... ERROR not found").arg( app::conf.usersFile ) );
-			return;
-		}
-
-		app::setLog( 3, QString("LOAD USER FILE [%1] ...").arg( app::conf.usersFile ) );
-
-		app::conf.users.clear();
-
-		QSettings users( app::conf.usersFile, QSettings::IniFormat );
-
-		for( auto group:users.childGroups() ){
-			app::setLog( 4, QString("   FOUND USER [%1]").arg( group ) );
-			users.beginGroup( group );
-
-			User user;
-
-			user.login				= group;
-			//user.group				= app::getUserGroupFromName( users.value( "group", "" ).toString() );
-			user.pass				= users.value( "password", "" ).toString();
-			user.maxConnections		= users.value( "maxConnections", user.maxConnections ).toUInt();
-			user.bytesMax			= users.value( "bytesMax", user.bytesMax ).toUInt();
-			auto accessList			= users.value( "accessList", "*" ).toString().split(",");
-			auto blockList			= users.value( "blockList", "*" ).toString().split(",");
-
-			//app::updateListFromList( accessList, user.accessList );
-			//app::updateListFromList( blockList, user.blockList );
-
-			app::conf.users.push_back( user );
-
-			users.endGroup();
-		}
-	}
-
-	void saveUsers()
-	{
-		if( app::conf.usersFile.isEmpty() ){
-			app::setLog( 2, QString("SAVE USER FILE [%1] ... ERROR not defined").arg( app::conf.usersFile ) );
-			return;
-		}
-
-		app::setLog( 3, QString("SAVE USER FILE [%1] ...").arg( app::conf.usersFile ) );
-
-		QSettings users( app::conf.usersFile, QSettings::IniFormat );
-		users.clear();
-
-		for( auto user:app::conf.users ){
-			users.beginGroup( user.login );
-
-			//users.setValue( "group", app::getUserGroupNameFromID( user.group ) );
-			users.setValue( "password", user.pass );
-			users.setValue( "maxConnections", user.maxConnections );
-			QStringList accessList;
-			QStringList blockList;
-			//app::updateListFromList( user.accessList, accessList );
-			//app::updateListFromList( user.blockList, blockList );
-			users.setValue( "accessList", accessList.join(",") );
-			users.setValue( "blockList", blockList.join(",") );
-			users.setValue( "bytesMax", user.bytesMax );
-
-			users.endGroup();
-		}
-
-		app::conf.usersSave = false;
-	}
-
-
-	
 }

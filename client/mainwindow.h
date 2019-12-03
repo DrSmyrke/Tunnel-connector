@@ -5,6 +5,7 @@
 #include <QTcpSocket>
 #include <QTimer>
 #include "global.h"
+#include "myproto.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -35,6 +36,7 @@ private:
 	Ui::MainWindow *ui;
 	QTcpSocket* m_pControlSocket;
 	QTimer* m_pTimer;
+	uint8_t m_disconnector;
 
 	void sendData(const QByteArray &data);
 	QString setColorText(const QString &text, const uint8_t state = 0);

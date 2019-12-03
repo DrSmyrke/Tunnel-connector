@@ -24,15 +24,19 @@ SOURCES += main.cpp \
     myfunctions.cpp \
     server.cpp
 
-# Check if the git version file exists
-! include(./gitversion.pri) {
-        error("Couldn't find the gitversion.pri file!")
-}
-! include(./myLibs.pri) {
-        error("Couldn't find the gitversion.pri file!")
-}
+exists(./gitversion.pri):include(./gitversion.pri)
+exists(./myLibs.pri):include(./myLibs.pri)
+
+# Default rules for deployment.
+qnx: target.path = /tmp/$${TARGET}/bin
+else: unix:!android: target.path = /opt/$${TARGET}/bin
+!isEmpty(target.path): INSTALLS += target
 
 HEADERS += \
     global.h \
     myfunctions.h \
     server.h
+	
+DISTFILES += \
+    gitversion.pri
+

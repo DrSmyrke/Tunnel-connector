@@ -8,7 +8,7 @@ MainWindow::MainWindow(QWidget *parent)
 	ui->setupUi(this);
 	ui->connectB->setText( tr("CONNECT") );
 	ui->statusL->setText( "" );
-	ui->serverAddrBox->setText( QString("%1:%2").arg( app::conf.server.ip.toString() ).arg( app::conf.server.port ) );
+	ui->serverAddrBox->setText( app::conf.server );
 
 	m_pControlSocket = new QTcpSocket( this );
 	m_pTimer = new QTimer( this );
@@ -75,9 +75,13 @@ void MainWindow::slot_stateChange(const QAbstractSocket::SocketState socketState
 			ui->statusL->setText( setColorText( tr("Connected"), StatusState::normal ) );
 			ui->connectB->setText( tr("DISCONNECT") );
 			ui->connectB->setEnabled( true );
-			app::conf.server.ip = m_pControlSocket->peerAddress();
-			app::conf.server.port = m_pControlSocket->peerPort();
+			app::conf.user.login = ui->loginBox->text();
+			app::conf.server = ui->serverAddrBox->text();
 			app::conf.settingsSave = true;
+			m_disconnector = 10;
+			myproto::Pkt pkt;
+			pkt.
+			sendData( myproto::buidPkt( pkt ) );
 		break;
 		default: break;
 	}
@@ -85,14 +89,22 @@ void MainWindow::slot_stateChange(const QAbstractSocket::SocketState socketState
 
 void MainWindow::slot_timer()
 {
+	if( m_disconnector > 0 ){
+		m_disconnector--;
+		if( m_disconnector == 0 ) m_pControlSocket->close();
+	}
 	if( app::conf.settingsSave ) app::saveSettings();
 }
 
 void MainWindow::sendData(const QByteArray &data)
 {
-//	if( !m_pSPort->isOpen() ) return;
-//	if( data.size() == 0 ) return;
-//	m_pSPort->write( data );
+	if( data.size() == 0 ) return;
+	if( m_pControlSocket->state() == QAbstractSocket::ConnectingState ) m_pControlSocket->waitForConnected(300);
+	if( m_pControlSocket->state() == QAbstractSocket::UnconnectedState ) return;
+	m_pControlSocket->write( data );
+	m_pControlSocket->waitForBytesWritten(100);
+	//app::setLog(5,QString("MainWindow::sendData %1 bytes [%2]").arg(data.size()).arg(QString(data)));
+	//app::setLog(6,QString("MainWindow::sendData [%2]").arg(QString(data.toHex())));
 }
 
 QString MainWindow::setColorText(const QString &text, const uint8_t state)

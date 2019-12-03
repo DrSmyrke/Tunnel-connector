@@ -68,6 +68,7 @@ ServerClient::ServerClient(qintptr descriptor, QObject *parent) : QTcpSocket(par
 bool ServerClient::run()
 {
 
+	return true;
 }
 
 void ServerClient::stop()
@@ -86,7 +87,7 @@ void ServerClient::slot_targetReadyRead()
 		QByteArray buff;
 		buff.append( m_pTarget->read( 1024 ) );
 		sendToClient( buff );
-		if( m_auth ) app::addBytesInTraffic( m_pTarget->peerAddress().toString(), m_userLogin, buff.size() );
+		//if( m_auth ) app::addBytesInTraffic( m_pTarget->peerAddress().toString(), m_userLogin, buff.size() );
 	}
 
 	//if(buff.size() > 0) app::setLog(3,QString("buff.size() > 0 !!! [%1]").arg( QString( buff ) ));
@@ -96,15 +97,34 @@ void ServerClient::slot_readyRead()
 {
 	QByteArray buff;
 
-	while( m_pClient->bytesAvailable() ){
-		buff.append( m_pClient->read(1024) );
-		if( m_pTarget->isOpen() && m_tunnel ){
-			sendToTarget( buff );
-			buff.clear();
-		}
+	while( this->bytesAvailable() ){
+		buff.append( this->read(1024) );
+		//if( m_pTarget->isOpen() && m_tunnel ){
+		//	sendToTarget( buff );
+		//	buff.clear();
+		//}
 	}
 
 	qDebug()<<buff.toHex();
+
+
+	Pkt pkt = myproto::parsPkt( m_rxBuff );
+
+	if( pkt.next ) return;
+	if( pkt.error ){
+		//TODO: resendLastPkt
+		return;
+	}
+	if( pkt.retry ){
+		slot_readyRead();
+		return;
+	}
+
+	myproto::parsParams( pkt );
+
+	switch (pkt.chanelNum) {
+		case pkt_channel_comunication:		parsPktCommunication( pkt );	break;
+	}
 
 	// Если данные уже отправили выходим
 	if( buff.size() == 0 ) return;

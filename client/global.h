@@ -15,8 +15,6 @@ struct User{
 	QString pass;
 	uint32_t lastLoginTimestamp			= 0;
 	uint32_t maxConnections				= 37;
-	std::vector<Host> accessList;
-	std::vector<Host> blockList;
 	uint32_t inBytes					= 0;
 	uint32_t outBytes					= 0;
 	uint32_t bytesMax					= 536870912;
@@ -38,9 +36,9 @@ struct Config{
 	uint16_t controlPort				= 7302;
 	bool settingsSave					= false;
 	bool usersSave						= false;
-	std::vector<User> users;
+	User user;
 	QByteArray realmString				= "TunnelConnector";
-	Host server;
+	QString server;
 };
 
 namespace app {
@@ -50,9 +48,6 @@ namespace app {
 	void saveSettings();
 	bool parsArgs(int argc, char *argv[]);
 	void setLog(const uint8_t logLevel, const QString &mess);
-
-	void loadUsers();
-	void saveUsers();
 }
 
 #endif // GLOBAL_H
