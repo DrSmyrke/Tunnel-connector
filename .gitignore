@@ -9,6 +9,8 @@ bin*
 */http.cpp
 */myfunctions.h
 */myfunctions.cpp
+*/myproto.h
+*/myproto.cpp
 build/*
 *.qmake.stash
 */qrc_resources.cpp
