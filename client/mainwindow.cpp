@@ -19,7 +19,7 @@ MainWindow::MainWindow(QWidget *parent)
 	setMinimumSize( 270, 220 );
 
 	connect( ui->connectB, &QPushButton::clicked, this, &MainWindow::slot_connect );
-	//connect( m_pControlSocket, &QTcpSocket::readyRead, this );
+	connect( m_pControlSocket, &QTcpSocket::readyRead, this, &MainWindow::slot_readyRead );
 	connect( m_pControlSocket, &QTcpSocket::stateChanged, this, &MainWindow::slot_stateChange );
 	connect( m_pTimer, &QTimer::timeout, this, &MainWindow::slot_timer );
 
@@ -34,12 +34,38 @@ MainWindow::~MainWindow()
 
 void MainWindow::slot_readyRead()
 {
-//	QByteArray buff;
-//	while( m_pSPort->bytesAvailable() ) buff.append( m_pSPort->readAll() );
+	while( m_pControlSocket->bytesAvailable() ){
+		m_rxBuff.append( m_pControlSocket->read(1024) );
+		//if( m_pTarget->isOpen() && m_tunnel ){
+		//	sendToTarget( buff );
+		//	buff.clear();
+		//}
+	}
 
-//	m_pHexViewer->appendData( buff );
+	qDebug()<<m_rxBuff.toHex();
+
+
+	myproto::Pkt pkt = myproto::parsPkt( m_rxBuff );
+
+	if( pkt.next ) return;
+	if( pkt.error ){
+		//TODO: send eoor
+		return;
+	}
+	if( pkt.retry ){
+		slot_readyRead();
+		return;
+	}
+
+	myproto::parsData( pkt );
+
+	switch (pkt.head.channel) {
+		case myproto::Channel::comunication:	parsPktCommunication( pkt );	break;
+	}
+
+	// Если данные еще есть, выводим
+	if( m_rxBuff.size() > 0 ) qDebug()<<m_rxBuff.toHex();
 }
-
 
 void MainWindow::slot_connect()
 {
@@ -79,9 +105,7 @@ void MainWindow::slot_stateChange(const QAbstractSocket::SocketState socketState
 			app::conf.server = ui->serverAddrBox->text();
 			app::conf.settingsSave = true;
 			m_disconnector = 10;
-			myproto::Pkt pkt;
-			pkt.
-			sendData( myproto::buidPkt( pkt ) );
+			sendInit();
 		break;
 		default: break;
 	}
@@ -104,7 +128,7 @@ void MainWindow::sendData(const QByteArray &data)
 	m_pControlSocket->write( data );
 	m_pControlSocket->waitForBytesWritten(100);
 	//app::setLog(5,QString("MainWindow::sendData %1 bytes [%2]").arg(data.size()).arg(QString(data)));
-	//app::setLog(6,QString("MainWindow::sendData [%2]").arg(QString(data.toHex())));
+	//app::setLog(3,QString("MainWindow::sendData [%2]").arg(QString(data.toHex())));
 }
 
 QString MainWindow::setColorText(const QString &text, const uint8_t state)
@@ -119,5 +143,33 @@ QString MainWindow::setColorText(const QString &text, const uint8_t state)
 	}
 	res += ";\">" + text + "</span>";
 	return res;
+}
+
+void MainWindow::sendInit()
+{
+	myproto::Pkt pkt;
+	pkt.head.channel = myproto::Channel::comunication;
+	pkt.head.type = myproto::PktType::hello;
+	myproto::addData( pkt.rawData, myproto::DataType::version, app::conf.version.toUtf8() );
+	sendData( myproto::buidPkt( pkt ) );
+}
+
+void MainWindow::parsPktCommunication(const myproto::Pkt &pkt)
+{
+	QByteArray ba;
+	switch (pkt.head.type) {
+		case myproto::PktType::hello:
+			app::setLog(3,QString("MainWindow::parsPktCommunication server version [%1]").arg(QString(ba)));
+			ba = myproto::findData( pkt, myproto::DataType::version );
+			if( ba == app::conf.version.toUtf8() ){
+				m_pkt.rawData.clear();
+				m_pkt.head.channel = pkt.head.channel;
+				m_pkt.head.type = myproto::PktType::hello2;
+				myproto::addData( m_pkt.rawData, myproto::DataType::version, app::conf.version.toUtf8() );
+				sendData( myproto::buidPkt( pkt ) );
+			}
+		break;
+		default: break;
+	}
 }
 

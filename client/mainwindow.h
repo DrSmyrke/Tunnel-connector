@@ -37,8 +37,12 @@ private:
 	QTcpSocket* m_pControlSocket;
 	QTimer* m_pTimer;
 	uint8_t m_disconnector;
+	QByteArray m_rxBuff;
+	myproto::Pkt m_pkt;
 
 	void sendData(const QByteArray &data);
 	QString setColorText(const QString &text, const uint8_t state = 0);
+	void sendInit();
+	void parsPktCommunication(const myproto::Pkt &pkt);
 };
 #endif // MAINWINDOW_H

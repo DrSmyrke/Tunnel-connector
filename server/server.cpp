@@ -95,24 +95,22 @@ void ServerClient::slot_targetReadyRead()
 
 void ServerClient::slot_readyRead()
 {
-	QByteArray buff;
-
 	while( this->bytesAvailable() ){
-		buff.append( this->read(1024) );
+		m_rxBuff.append( this->read(1024) );
 		//if( m_pTarget->isOpen() && m_tunnel ){
 		//	sendToTarget( buff );
 		//	buff.clear();
 		//}
 	}
 
-	qDebug()<<buff.toHex();
+	qDebug()<<m_rxBuff.toHex();
 
 
-	Pkt pkt = myproto::parsPkt( m_rxBuff );
+	myproto::Pkt pkt = myproto::parsPkt( m_rxBuff );
 
 	if( pkt.next ) return;
 	if( pkt.error ){
-		//TODO: resendLastPkt
+		//TODO: send eoor
 		return;
 	}
 	if( pkt.retry ){
@@ -120,14 +118,14 @@ void ServerClient::slot_readyRead()
 		return;
 	}
 
-	myproto::parsParams( pkt );
+	myproto::parsData( pkt );
 
-	switch (pkt.chanelNum) {
-		case pkt_channel_comunication:		parsPktCommunication( pkt );	break;
+	switch (pkt.head.channel) {
+		case myproto::Channel::comunication:	parsPktCommunication( pkt );	break;
 	}
 
-	// Если данные уже отправили выходим
-	if( buff.size() == 0 ) return;
+	// Если данные еще есть, выводим
+	if( m_rxBuff.size() > 0 ) qDebug()<<m_rxBuff.toHex();
 }
 
 void ServerClient::sendToClient(const QByteArray &data)
@@ -150,4 +148,31 @@ void ServerClient::sendToTarget(const QByteArray &data)
 	m_pTarget->waitForBytesWritten(100);
 	//app::setLog(5,QString("ServerClient::sendToTarget %1 bytes [%2]").arg(data.size()).arg(QString(data)));
 	//app::setLog(6,QString("ServerClient::sendToTarget [%2]").arg(QString(data.toHex())));
+}
+
+void ServerClient::parsPktCommunication(const myproto::Pkt &pkt)
+{
+	QByteArray ba;
+	switch (pkt.head.type) {
+		case myproto::PktType::hello:
+			app::setLog(3,QString("ServerClient::parsPktCommunication client version [%1]").arg(QString(ba)));
+			ba = myproto::findData( pkt, myproto::DataType::version );
+			if( ba != app::conf.version.toUtf8() ){
+				m_pkt.rawData.clear();
+				m_pkt.head.channel = pkt.head.channel;
+				m_pkt.head.type = myproto::PktType::bye;
+				myproto::addData( m_pkt.rawData, myproto::DataType::version, app::conf.version.toUtf8() );
+				sendToClient( myproto::buidPkt( pkt ) );
+
+				this->close();
+			}else{
+				m_pkt.rawData.clear();
+				m_pkt.head.channel = pkt.head.channel;
+				m_pkt.head.type = pkt.head.type;
+				myproto::addData( m_pkt.rawData, myproto::DataType::version, app::conf.version.toUtf8() );
+				sendToClient( myproto::buidPkt( pkt ) );
+			}
+		break;
+		default: break;
+	}
 }

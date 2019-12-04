@@ -16,9 +16,9 @@ UI_DIR              = ../build/client/ui
 DESTDIR             = ../bin/client
 
 win32|win64{
-    RC_FILE=  index.rc
-    OTHER_FILES+= index.rc
-    DISTFILES += index.rc
+    RC_FILE=  ../index.rc
+    OTHER_FILES+= ../index.rc
+    DISTFILES += ../index.rc
 }
 
 QMAKE_CXXFLAGS += "-std=c++11"

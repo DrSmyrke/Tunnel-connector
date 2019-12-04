@@ -9,11 +9,17 @@ CONFIG -= app_bundle
 CONFIG(debug, debug|release):CONFIGURATION=debug
 CONFIG(release, debug|release):CONFIGURATION=release
 
-OBJECTS_DIR         = ../build/obj/$${CONFIGURATION}
-MOC_DIR             = ../build/$${CONFIGURATION}
-RCC_DIR             = ../build
-UI_DIR              = ../build/ui
+OBJECTS_DIR         = ../build/server/obj/$${CONFIGURATION}
+MOC_DIR             = ../build/server/$${CONFIGURATION}
+RCC_DIR             = ../build/server
+UI_DIR              = ../build/server/ui
 DESTDIR             = ../bin/server
+
+win32|win64{
+    RC_FILE=  ../index.rc
+    OTHER_FILES+= ../index.rc
+    DISTFILES += ../index.rc
+}
 
 QMAKE_CXXFLAGS += "-std=c++11"
 
@@ -22,6 +28,7 @@ TEMPLATE = app
 SOURCES += main.cpp \
     global.cpp \
     myfunctions.cpp \
+    myproto.cpp \
     server.cpp
 
 exists(./gitversion.pri):include(./gitversion.pri)
@@ -35,6 +42,7 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 HEADERS += \
     global.h \
     myfunctions.h \
+    myproto.h \
     server.h
 	
 DISTFILES += \
