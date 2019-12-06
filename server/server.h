@@ -42,10 +42,14 @@ private:
 	QTcpSocket* m_pTarget;
 	QByteArray m_rxBuff;
 	myproto::Pkt m_pkt;
+	QString m_login;
+	User m_user;
 
 	void sendToClient(const QByteArray &data);
 	void sendToTarget(const QByteArray &data);
 	void parsPktCommunication(const myproto::Pkt &pkt);
+	void parsPktAuth(const myproto::Pkt &pkt);
+	void sendBye();
 };
 
 #endif // SERVER_H

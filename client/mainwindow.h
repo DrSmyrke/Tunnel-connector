@@ -6,6 +6,7 @@
 #include <QTimer>
 #include "global.h"
 #include "myproto.h"
+#include "mylist.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -32,6 +33,7 @@ private slots:
 	void slot_connect();
 	void slot_stateChange(const QAbstractSocket::SocketState socketState);
 	void slot_timer();
+	void slot_addAddress();
 private:
 	Ui::MainWindow *ui;
 	QTcpSocket* m_pControlSocket;
@@ -39,10 +41,13 @@ private:
 	uint8_t m_disconnector;
 	QByteArray m_rxBuff;
 	myproto::Pkt m_pkt;
+	bool m_auth;
+	MyList* m_model;
 
 	void sendData(const QByteArray &data);
 	QString setColorText(const QString &text, const uint8_t state = 0);
 	void sendInit();
 	void parsPktCommunication(const myproto::Pkt &pkt);
+	void parsPktAuth(const myproto::Pkt &pkt);
 };
 #endif // MAINWINDOW_H

@@ -13,7 +13,7 @@ namespace app {
 		QSettings settings( "MySoft", app::conf.appName );
 
 		app::conf.server		= settings.value( "SERVER/server", app::conf.server ).toString();
-		app::conf.user.login	= settings.value( "USER/login", app::conf.user.login ).toUInt();
+		app::conf.user.login	= settings.value( "USER/login", app::conf.user.login ).toString();
 	}
 
 	void saveSettings()

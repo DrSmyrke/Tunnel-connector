@@ -1,18 +1,26 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include "myfunctions.h"
+
+#include <QUrl>
 
 MainWindow::MainWindow(QWidget *parent)
 	: QMainWindow(parent)
 	, ui(new Ui::MainWindow)
+	, m_auth(false)
 {
+	m_pControlSocket = new QTcpSocket( this );
+	m_pTimer = new QTimer( this );
+		m_pTimer->setInterval( 100 );
+	m_model = new MyList();
+
 	ui->setupUi(this);
 	ui->connectB->setText( tr("CONNECT") );
 	ui->statusL->setText( "" );
 	ui->serverAddrBox->setText( app::conf.server );
-
-	m_pControlSocket = new QTcpSocket( this );
-	m_pTimer = new QTimer( this );
-		m_pTimer->setInterval( 100 );
+	ui->loginBox->setText( app::conf.user.login );
+	ui->tableView->setModel( m_model );
+	ui->tableView->setEditTriggers( QAbstractItemView::AnyKeyPressed | QAbstractItemView::DoubleClicked );
 
 	setWindowTitle( "Tunnel Connector v" + app::conf.version );
 	setWindowIcon( QIcon( "://index.ico" ) );
@@ -22,12 +30,18 @@ MainWindow::MainWindow(QWidget *parent)
 	connect( m_pControlSocket, &QTcpSocket::readyRead, this, &MainWindow::slot_readyRead );
 	connect( m_pControlSocket, &QTcpSocket::stateChanged, this, &MainWindow::slot_stateChange );
 	connect( m_pTimer, &QTimer::timeout, this, &MainWindow::slot_timer );
+	connect( ui->addAddressB, &QPushButton::clicked, this, &MainWindow::slot_addAddress );
+	connect( ui->tableView, &QTableView::doubleClicked, this, [this](const QModelIndex &index){
+		if( !index.isValid() ) return;
+		qDebug()<<index.data().toString();
+	} );
 
 	m_pTimer->start();
 }
 
 MainWindow::~MainWindow()
 {
+	m_model->deleteLater();
 	if( m_pTimer->isActive() ) m_pTimer->stop();
 	delete ui;
 }
@@ -42,7 +56,7 @@ void MainWindow::slot_readyRead()
 		//}
 	}
 
-	qDebug()<<m_rxBuff.toHex();
+	app::setLog(3,QString("MainWindow::slot_readyRead [%2]").arg(QString(m_rxBuff.toHex())));
 
 
 	myproto::Pkt pkt = myproto::parsPkt( m_rxBuff );
@@ -57,10 +71,15 @@ void MainWindow::slot_readyRead()
 		return;
 	}
 
-	myproto::parsData( pkt );
+	if( pkt.head.channel == myproto::Channel::auth ){
+		myproto::parsData( pkt, app::conf.user.pass.toUtf8() );
+	}else{
+		myproto::parsData( pkt );
+	}
 
 	switch (pkt.head.channel) {
 		case myproto::Channel::comunication:	parsPktCommunication( pkt );	break;
+		case myproto::Channel::auth:			parsPktAuth( pkt );				break;
 	}
 
 	// Если данные еще есть, выводим
@@ -102,6 +121,8 @@ void MainWindow::slot_stateChange(const QAbstractSocket::SocketState socketState
 			ui->connectB->setText( tr("DISCONNECT") );
 			ui->connectB->setEnabled( true );
 			app::conf.user.login = ui->loginBox->text();
+			app::conf.user.pass = app::conf.user.login + ":>:" + ui->passwordBox->text();
+			app::conf.user.pass = mf::md5( app::conf.user.pass.toUtf8() );
 			app::conf.server = ui->serverAddrBox->text();
 			app::conf.settingsSave = true;
 			m_disconnector = 10;
@@ -120,6 +141,16 @@ void MainWindow::slot_timer()
 	if( app::conf.settingsSave ) app::saveSettings();
 }
 
+void MainWindow::slot_addAddress()
+{
+	QUrl url;
+	url.setUrl( ui->addAddressBox->text() );
+	if( !url.isValid() || url.port() < 1 ) return;
+
+	m_model->addTarget( url );
+	ui->tableView->horizontalHeader()->setSectionResizeMode( 0, QHeaderView::ResizeToContents );
+}
+
 void MainWindow::sendData(const QByteArray &data)
 {
 	if( data.size() == 0 ) return;
@@ -128,7 +159,7 @@ void MainWindow::sendData(const QByteArray &data)
 	m_pControlSocket->write( data );
 	m_pControlSocket->waitForBytesWritten(100);
 	//app::setLog(5,QString("MainWindow::sendData %1 bytes [%2]").arg(data.size()).arg(QString(data)));
-	//app::setLog(3,QString("MainWindow::sendData [%2]").arg(QString(data.toHex())));
+	//app::setLog(6,QString("MainWindow::sendData [%2]").arg(QString(data.toHex())));
 }
 
 QString MainWindow::setColorText(const QString &text, const uint8_t state)
@@ -159,17 +190,40 @@ void MainWindow::parsPktCommunication(const myproto::Pkt &pkt)
 	QByteArray ba;
 	switch (pkt.head.type) {
 		case myproto::PktType::hello:
-			app::setLog(3,QString("MainWindow::parsPktCommunication server version [%1]").arg(QString(ba)));
 			ba = myproto::findData( pkt, myproto::DataType::version );
+			app::setLog(3,QString("MainWindow::parsPktCommunication server version [%1]").arg(QString(ba)));
 			if( ba == app::conf.version.toUtf8() ){
 				m_pkt.rawData.clear();
 				m_pkt.head.channel = pkt.head.channel;
 				m_pkt.head.type = myproto::PktType::hello2;
-				myproto::addData( m_pkt.rawData, myproto::DataType::version, app::conf.version.toUtf8() );
-				sendData( myproto::buidPkt( pkt ) );
+				myproto::addData( m_pkt.rawData, myproto::DataType::login, app::conf.user.login.toUtf8() );
+				sendData( myproto::buidPkt( m_pkt ) );
 			}
 		break;
+		case myproto::PktType::hello2:
+			m_pkt.rawData.clear();
+			m_pkt.head.channel = myproto::Channel::auth;
+			m_pkt.head.type = myproto::PktType::hello;
+			myproto::addData( m_pkt.rawData, myproto::DataType::text, "hello" );
+			sendData( myproto::buidPkt( m_pkt, app::conf.user.pass.toUtf8() ) );
+		break;
 		default: break;
+	}
+}
+
+void MainWindow::parsPktAuth(const myproto::Pkt &pkt)
+{
+	QByteArray ba;
+	switch (pkt.head.type) {
+		case myproto::PktType::hello:
+			ba = myproto::findData( pkt, myproto::DataType::text );
+			app::setLog(3,QString("MainWindow::parsPktAuth server hello [%1]").arg(QString(ba)));
+			if( ba != "hello" ){
+				m_pControlSocket->close();
+			}else{
+				m_disconnector = 0;
+			}
+		break;
 	}
 }
 

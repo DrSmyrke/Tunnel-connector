@@ -29,6 +29,7 @@ SOURCES += main.cpp \
     global.cpp \
     mainwindow.cpp \
     myfunctions.cpp \
+    mylist.cpp \
     myproto.cpp
 
 exists(./gitversion.pri):include(./gitversion.pri)
@@ -48,6 +49,7 @@ HEADERS += \
     global.h \
     mainwindow.h \
     myfunctions.h \
+    mylist.h \
     myproto.h
 
 DISTFILES += \

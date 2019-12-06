@@ -4,10 +4,20 @@
 #include <QString>
 #include <QDir>
 #include <QHostAddress>
+#include <QUrl>
 
 struct Host{
 	QHostAddress ip;
 	uint16_t port						= 0;
+};
+
+struct ProxyData{
+	QUrl target;
+	uint16_t localPort					= 0;
+	bool connected						= false;
+	uint8_t id							= 0;
+	uint16_t socketDescriptor			= 0;
+	QString status;
 };
 
 struct User{
@@ -25,17 +35,13 @@ struct Config{
 	uint8_t logLevel					= 3;
 #ifdef __linux__
 	QString logFile						= "/tmp/tunnelConnector.log";
-	QString usersFile					= "/etc/DrSmyrke/TunnelConnector/users.list";
 #elif _WIN32
 	QString logFile						= QDir::homePath() + "/tunnelConnector.log";
-	QString usersFile					= QDir::homePath() + "/TunnelConnector/users.list";
 #endif
 	QString appName						= "tunnelConnector";
 	QString version						= "0.1";
 	uint16_t port						= 7301;
-	uint16_t controlPort				= 7302;
 	bool settingsSave					= false;
-	bool usersSave						= false;
 	User user;
 	QByteArray realmString				= "TunnelConnector";
 	QString server;

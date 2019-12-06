@@ -118,10 +118,16 @@ void ServerClient::slot_readyRead()
 		return;
 	}
 
-	myproto::parsData( pkt );
+	if( pkt.head.channel == myproto::Channel::auth ){\
+		app::setLog(3,QString("ServerClient::pass client login [%1]").arg(m_user.pass));
+		myproto::parsData( pkt, m_user.pass.toUtf8() );
+	}else{
+		myproto::parsData( pkt );
+	}
 
 	switch (pkt.head.channel) {
 		case myproto::Channel::comunication:	parsPktCommunication( pkt );	break;
+		case myproto::Channel::auth:			parsPktAuth( pkt );				break;
 	}
 
 	// Если данные еще есть, выводим
@@ -136,7 +142,7 @@ void ServerClient::sendToClient(const QByteArray &data)
 	this->write(data);
 	this->waitForBytesWritten(100);
 	//app::setLog(5,QString("ServerClient::sendToClient %1 bytes [%2]").arg(data.size()).arg(QString(data)));
-	//app::setLog(6,QString("ServerClient::sendToClient [%3]").arg(QString(data.toHex())));
+	app::setLog(3,QString("ServerClient::sendToClient [%3]").arg(QString(data.toHex())));
 }
 
 void ServerClient::sendToTarget(const QByteArray &data)
@@ -150,28 +156,68 @@ void ServerClient::sendToTarget(const QByteArray &data)
 	//app::setLog(6,QString("ServerClient::sendToTarget [%2]").arg(QString(data.toHex())));
 }
 
+void ServerClient::parsPktAuth(const myproto::Pkt &pkt)
+{
+	QByteArray ba;
+	switch (pkt.head.type) {
+		case myproto::PktType::hello:
+			ba = myproto::findData( pkt, myproto::DataType::text );
+			app::setLog(3,QString("ServerClient::parsPktAuth client hello [%1]").arg(QString(ba)));
+			if( ba != "hello" ){
+				sendBye();
+			}else{
+				m_pkt.rawData.clear();
+				m_pkt.head.channel = myproto::Channel::auth;
+				m_pkt.head.type = myproto::PktType::hello;
+				myproto::addData( m_pkt.rawData, myproto::DataType::text, ba );
+				sendToClient( myproto::buidPkt( m_pkt, m_user.pass.toUtf8() ) );
+			}
+		break;
+	}
+}
+
+void ServerClient::sendBye()
+{
+	m_pkt.rawData.clear();
+	m_pkt.head.channel = myproto::Channel::comunication;
+	m_pkt.head.type = myproto::PktType::bye;
+	myproto::addData( m_pkt.rawData, myproto::DataType::version, app::conf.version.toUtf8() );
+	sendToClient( myproto::buidPkt( m_pkt ) );
+	this->close();
+}
+
 void ServerClient::parsPktCommunication(const myproto::Pkt &pkt)
 {
 	QByteArray ba;
 	switch (pkt.head.type) {
 		case myproto::PktType::hello:
-			app::setLog(3,QString("ServerClient::parsPktCommunication client version [%1]").arg(QString(ba)));
 			ba = myproto::findData( pkt, myproto::DataType::version );
+			app::setLog(3,QString("ServerClient::parsPktCommunication client version [%1]").arg(QString(ba)));
 			if( ba != app::conf.version.toUtf8() ){
-				m_pkt.rawData.clear();
-				m_pkt.head.channel = pkt.head.channel;
-				m_pkt.head.type = myproto::PktType::bye;
-				myproto::addData( m_pkt.rawData, myproto::DataType::version, app::conf.version.toUtf8() );
-				sendToClient( myproto::buidPkt( pkt ) );
-
-				this->close();
+				sendBye();
 			}else{
 				m_pkt.rawData.clear();
 				m_pkt.head.channel = pkt.head.channel;
 				m_pkt.head.type = pkt.head.type;
 				myproto::addData( m_pkt.rawData, myproto::DataType::version, app::conf.version.toUtf8() );
-				sendToClient( myproto::buidPkt( pkt ) );
+				sendToClient( myproto::buidPkt( m_pkt ) );
 			}
+		break;
+		case myproto::PktType::hello2:
+			ba = myproto::findData( pkt, myproto::DataType::login );
+			app::setLog(3,QString("ServerClient::parsPktCommunication client login [%1]").arg(QString(ba)));
+
+			for( auto user:app::conf.users ){
+				if( user.login.toUtf8() == ba ){
+					m_user = user;
+					break;
+				}
+			}
+
+			m_pkt.rawData.clear();
+			m_pkt.head.channel = pkt.head.channel;
+			m_pkt.head.type = pkt.head.type;
+			sendToClient( myproto::buidPkt( m_pkt ) );
 		break;
 		default: break;
 	}

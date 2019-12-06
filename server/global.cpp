@@ -14,6 +14,8 @@ namespace app {
 
 		//app::conf.maxThreads = settings.value("SERVER/maxThreads",app::conf.maxThreads).toUInt();
 		//app::conf.port = settings.value("SERVER/port",app::conf.port).toUInt();
+
+		app::loadUsers();
 	}
 
 	void saveSettings()
