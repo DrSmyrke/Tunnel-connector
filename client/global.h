@@ -6,6 +6,17 @@
 #include <QHostAddress>
 #include <QUrl>
 
+struct StatusConnectState
+{
+	enum{
+		normal = 1,
+		processing,
+		warning,
+		error,
+		disconnected
+	};
+};
+
 struct Host{
 	QHostAddress ip;
 	uint16_t port						= 0;
@@ -45,6 +56,7 @@ struct Config{
 	User user;
 	QByteArray realmString				= "TunnelConnector";
 	QString server;
+	std::vector<QUrl> connections;
 };
 
 namespace app {

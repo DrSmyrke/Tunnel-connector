@@ -50,24 +50,24 @@ void Server::incomingConnection(qintptr socketDescriptor)
 ServerClient::ServerClient(qintptr descriptor, QObject *parent) : QTcpSocket(parent)
 {
 	if( !this->setSocketDescriptor( descriptor ) ) slot_stop();
+	app::setLog(3,QString("ServerClient::new client [%1:%2]").arg( this->peerAddress().toString() ).arg( this->peerPort() ) );
 
-	m_pTarget = new QTcpSocket();
+	m_pTargetTcp = new QTcpSocket();
 
 	connect( this, &QTcpSocket::readyRead, this, &ServerClient::slot_readyRead);
-	connect( m_pTarget, &QTcpSocket::readyRead, this, &ServerClient::slot_targetReadyRead);
+	connect( m_pTargetTcp, &QTcpSocket::readyRead, this, &ServerClient::slot_targetReadyRead);
 	connect( this, &QTcpSocket::disconnected, this, [this](){
-		//app::setLog(6,QString("Client::Client disconnected"));
+		//app::setLog(6,QString("ServerClient::Client disconnected"));
 		slot_stop();
 	});
-	connect( m_pTarget, &QTcpSocket::disconnected, this, [this](){
-		//app::setLog(6,QString("Client::Target disconnected"));
+	connect( m_pTargetTcp, &QTcpSocket::disconnected, this, [this](){
+		//app::setLog(6,QString("ServerClient::Target disconnected"));
 		slot_stop();
 	});
 }
 
 bool ServerClient::run()
 {
-
 	return true;
 }
 
@@ -83,10 +83,14 @@ void ServerClient::slot_stop()
 
 void ServerClient::slot_targetReadyRead()
 {
-	while( m_pTarget->bytesAvailable() ){
-		QByteArray buff;
-		buff.append( m_pTarget->read( 1024 ) );
-		sendToClient( buff );
+	QByteArray buf;
+	while( m_pTargetTcp->bytesAvailable() ){
+		m_pkt.rawData.clear();
+		m_pkt.head.channel = myproto::Channel::auth;
+		m_pkt.head.type = myproto::PktType::data;
+		buf.append( m_pTargetTcp->read( 1024 ) );
+		myproto::addData( m_pkt.rawData, myproto::DataType::data, buf );
+		sendToClient( myproto::buidPkt( m_pkt, m_user.pass.toUtf8() ) );
 		//if( m_auth ) app::addBytesInTraffic( m_pTarget->peerAddress().toString(), m_userLogin, buff.size() );
 	}
 
@@ -97,14 +101,9 @@ void ServerClient::slot_readyRead()
 {
 	while( this->bytesAvailable() ){
 		m_rxBuff.append( this->read(1024) );
-		//if( m_pTarget->isOpen() && m_tunnel ){
-		//	sendToTarget( buff );
-		//	buff.clear();
-		//}
 	}
 
-	qDebug()<<m_rxBuff.toHex();
-
+	app::setLog(3,QString("ServerClient::slot_readyRead [%1]").arg(QString(m_rxBuff.toHex())));
 
 	myproto::Pkt pkt = myproto::parsPkt( m_rxBuff );
 
@@ -119,7 +118,6 @@ void ServerClient::slot_readyRead()
 	}
 
 	if( pkt.head.channel == myproto::Channel::auth ){\
-		app::setLog(3,QString("ServerClient::pass client login [%1]").arg(m_user.pass));
 		myproto::parsData( pkt, m_user.pass.toUtf8() );
 	}else{
 		myproto::parsData( pkt );
@@ -142,16 +140,16 @@ void ServerClient::sendToClient(const QByteArray &data)
 	this->write(data);
 	this->waitForBytesWritten(100);
 	//app::setLog(5,QString("ServerClient::sendToClient %1 bytes [%2]").arg(data.size()).arg(QString(data)));
-	app::setLog(3,QString("ServerClient::sendToClient [%3]").arg(QString(data.toHex())));
+	app::setLog(3,QString("ServerClient::sendToClient [%1]").arg(QString(data.toHex())));
 }
 
 void ServerClient::sendToTarget(const QByteArray &data)
 {
 	if( data.size() == 0 ) return;
-	if( m_pTarget->state() == QAbstractSocket::ConnectingState ) m_pTarget->waitForConnected(300);
-	if( m_pTarget->state() == QAbstractSocket::UnconnectedState ) return;
-	m_pTarget->write( data );
-	m_pTarget->waitForBytesWritten(100);
+	if( m_pTargetTcp->state() == QAbstractSocket::ConnectingState ) m_pTargetTcp->waitForConnected(300);
+	if( m_pTargetTcp->state() == QAbstractSocket::UnconnectedState ) return;
+	m_pTargetTcp->write( data );
+	m_pTargetTcp->waitForBytesWritten(100);
 	//app::setLog(5,QString("ServerClient::sendToTarget %1 bytes [%2]").arg(data.size()).arg(QString(data)));
 	//app::setLog(6,QString("ServerClient::sendToTarget [%2]").arg(QString(data.toHex())));
 }
@@ -159,6 +157,11 @@ void ServerClient::sendToTarget(const QByteArray &data)
 void ServerClient::parsPktAuth(const myproto::Pkt &pkt)
 {
 	QByteArray ba;
+	QByteArray url;
+	QByteArray id;
+	QByteArray boolean;
+	QUrl targetUrl;
+
 	switch (pkt.head.type) {
 		case myproto::PktType::hello:
 			ba = myproto::findData( pkt, myproto::DataType::text );
@@ -173,6 +176,33 @@ void ServerClient::parsPktAuth(const myproto::Pkt &pkt)
 				sendToClient( myproto::buidPkt( m_pkt, m_user.pass.toUtf8() ) );
 			}
 		break;
+		case myproto::PktType::request:
+			m_pkt.rawData.clear();
+			url = myproto::findData( pkt, myproto::DataType::url );
+			id = myproto::findData( pkt, myproto::DataType::id );
+			boolean = myproto::findData( pkt, myproto::DataType::boolean );
+			app::setLog(3,QString("ServerClient::parsPktAuth client request url [%1] %2 %3").arg(QString(url)).arg(QString(id)).arg(QString(boolean)));
+			targetUrl.setUrl( url );
+			m_pkt.head.channel = myproto::Channel::auth;
+			m_pkt.head.type = myproto::PktType::response;
+			myproto::addData( m_pkt.rawData, myproto::DataType::id, id );
+			//TODO: Реализовать запрет коннекта без разрешения
+			if( targetUrl.isValid() ){
+				if( addConnect( targetUrl ) ){
+					myproto::addData( m_pkt.rawData, myproto::DataType::boolean, "1" );
+				}else{
+					myproto::addData( m_pkt.rawData, myproto::DataType::boolean, "0" );
+				}
+			}else{
+				myproto::addData( m_pkt.rawData, myproto::DataType::boolean, "0" );
+			}
+			sendToClient( myproto::buidPkt( m_pkt, m_user.pass.toUtf8() ) );
+		break;
+		case myproto::PktType::data:
+			ba = myproto::findData( pkt, myproto::DataType::data );
+			app::setLog(3,QString("ServerClient::parsPktAuth client data [%1]").arg(QString(ba)));
+			sendToTarget( ba );
+		break;
 	}
 }
 
@@ -184,6 +214,15 @@ void ServerClient::sendBye()
 	myproto::addData( m_pkt.rawData, myproto::DataType::version, app::conf.version.toUtf8() );
 	sendToClient( myproto::buidPkt( m_pkt ) );
 	this->close();
+}
+
+bool ServerClient::addConnect(const QUrl &url)
+{
+	if( url.scheme().toLower() == "tcp" ){
+		m_pTargetTcp->connectToHost( url.host(), url.port() );
+		return true;
+	}
+	return false;
 }
 
 void ServerClient::parsPktCommunication(const myproto::Pkt &pkt)

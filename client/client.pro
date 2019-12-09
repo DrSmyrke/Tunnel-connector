@@ -26,6 +26,7 @@ QMAKE_CXXFLAGS += "-std=c++11"
 TEMPLATE = app
 
 SOURCES += main.cpp \
+    connector.cpp \
     global.cpp \
     mainwindow.cpp \
     myfunctions.cpp \
@@ -46,6 +47,7 @@ build_pass:CONFIG(debug, debug|release) {
 }
 
 HEADERS += \
+    connector.h \
     global.h \
     mainwindow.h \
     myfunctions.h \

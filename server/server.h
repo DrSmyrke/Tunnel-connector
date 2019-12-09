@@ -4,6 +4,8 @@
 #include <QObject>
 #include <QTcpServer>
 #include <QTcpSocket>
+#include <QUdpSocket>
+#include <QUrl>
 
 #include "global.h"
 #include "myproto.h"
@@ -39,17 +41,19 @@ private slots:
 	void slot_targetReadyRead();
 	void slot_readyRead();
 private:
-	QTcpSocket* m_pTarget;
 	QByteArray m_rxBuff;
 	myproto::Pkt m_pkt;
 	QString m_login;
 	User m_user;
+	QTcpSocket* m_pTargetTcp;
+	QUdpSocket* m_pTargetUdp;
 
 	void sendToClient(const QByteArray &data);
 	void sendToTarget(const QByteArray &data);
 	void parsPktCommunication(const myproto::Pkt &pkt);
 	void parsPktAuth(const myproto::Pkt &pkt);
 	void sendBye();
+	bool addConnect(const QUrl &url);
 };
 
 #endif // SERVER_H
