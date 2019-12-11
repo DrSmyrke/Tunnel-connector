@@ -14,7 +14,7 @@ Server::~Server()
 
 bool Server::run()
 {
-	if(!this->listen( QHostAddress::AnyIPv4, app::conf.port )){
+	if( !this->listen( QHostAddress::AnyIPv4, app::conf.port ) ){
 		app::setLog( 0, QString("SERVER [ NOT ACTIVATED ] PORT: [%1] %2").arg( app::conf.port ).arg( this->errorString() ) );
 		return false;
 	}

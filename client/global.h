@@ -32,8 +32,8 @@ struct ProxyData{
 };
 
 struct User{
-	QString login;
-	QString pass;
+	QString login						= "";
+	QString pass						= "";
 	uint32_t lastLoginTimestamp			= 0;
 	uint32_t maxConnections				= 37;
 	uint32_t inBytes					= 0;
@@ -56,7 +56,6 @@ struct Config{
 	User user;
 	QByteArray realmString				= "TunnelConnector";
 	QString server;
-	std::vector<QUrl> connections;
 };
 
 namespace app {

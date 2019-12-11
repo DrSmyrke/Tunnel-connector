@@ -4,7 +4,8 @@
 #include <QMainWindow>
 #include <QTimer>
 #include "global.h"
-#include "mylist.h"
+#include "connector.h"
+#include "localserver.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -18,10 +19,12 @@ public:
 	~MainWindow();
 private slots:
 	void slot_timer();
-	void slot_addAddress();
 private:
 	Ui::MainWindow *ui;
 	QTimer* m_pTimer;
-	MyList* m_model;
+	Connector* m_connector;
+	LocalServer* m_pServer;
+
+	QString setColorText(const uint8_t state = StatusConnectState::disconnected) const;
 };
 #endif // MAINWINDOW_H

@@ -1,19 +1,10 @@
 #include "connector.h"
 
-Connector::Connector(const QUrl &url, QObject *parent)
+Connector::Connector(QObject *parent)
 	: QObject(parent)
-	, m_target(url)
 {
 	m_pSocket = new QTcpSocket( this );
-	m_pClientSocket = new QTcpSocket( this );
-	m_pTcpServer = new QTcpServer( this );
-
 	connect( m_pSocket, &QTcpSocket::readyRead, this, &Connector::slot_readyRead );
-	connect( m_pTcpServer, &QTcpServer::newConnection, this, [this](){
-		if( m_pClientSocket->state() != QAbstractSocket::UnconnectedState ) return;
-		m_pClientSocket = m_pTcpServer->nextPendingConnection();
-		connect( m_pClientSocket, &QTcpSocket::readyRead, this, &Connector::slot_clientReadyRead );
-	} );
 	connect( m_pSocket, &QTcpSocket::stateChanged, this, &Connector::slot_stateChange );
 }
 
@@ -21,7 +12,6 @@ bool Connector::init()
 {
 	if( m_pSocket->state() != QAbstractSocket::UnconnectedState){
 		m_pSocket->close();
-		if( m_pTcpServer->isListening() ) m_pTcpServer->close();
 		return false;
 	}
 
@@ -40,23 +30,32 @@ bool Connector::init()
 	return true;
 }
 
-void Connector::slot_stop()
+void Connector::stop()
 {
 	emit signal_finished(this);
+}
+
+void Connector::slot_incomingData(const QByteArray &data)
+{
+	m_pkt.rawData.clear();
+	m_pkt.head.channel = myproto::Channel::auth;
+	m_pkt.head.type = myproto::PktType::data;
+	myproto::addData( m_pkt.rawData, myproto::DataType::data, data );
+	sendData( myproto::buidPkt( m_pkt, app::conf.user.pass.toUtf8() ) );
 }
 
 void Connector::slot_stateChange(const QAbstractSocket::SocketState socketState)
 {
 	switch (socketState) {
 		case QAbstractSocket::UnconnectedState:
-			m_state = StatusConnectState::disconnected;
+			emit signal_stateChanged( StatusConnectState::disconnected );
 		break;
 		case QAbstractSocket::ConnectingState:
-			m_state = StatusConnectState::processing;
+			emit signal_stateChanged( StatusConnectState::processing );
 		break;
 		case QAbstractSocket::ConnectedState:
-			m_state = StatusConnectState::normal;
-			sendInit();
+			emit signal_stateChanged( StatusConnectState::normal );
+			openTunnel();
 		break;
 		default: break;
 	}
@@ -98,21 +97,6 @@ void Connector::slot_readyRead()
 	if( m_rxBuff.size() > 0 ) qDebug()<<m_rxBuff.toHex();
 }
 
-void Connector::slot_clientReadyRead()
-{
-	//QTcpSocket* pSocket = (QTcpSocket*)sender();
-	QByteArray buf;
-	while( m_pClientSocket->bytesAvailable() ){
-		m_pkt.rawData.clear();
-		buf.append( m_pClientSocket->read(1024) );
-		m_pkt.head.channel = myproto::Channel::auth;
-		m_pkt.head.type = myproto::PktType::data;
-		myproto::addData( m_pkt.rawData, myproto::DataType::data, buf );
-		sendData( myproto::buidPkt( m_pkt, app::conf.user.pass.toUtf8() ) );
-		app::setLog(3,QString("Connector::slot_clientReadyRead [%1] %2").arg(QString(buf)).arg( buf.size() ));
-	}
-}
-
 void Connector::sendData(const QByteArray &data)
 {
 	if( data.size() == 0 ) return;
@@ -124,18 +108,7 @@ void Connector::sendData(const QByteArray &data)
 	app::setLog(3,QString("Connector::sendData [%1]").arg(QString(data.toHex())));
 }
 
-void Connector::sendClientData(const QByteArray &data)
-{
-	if( data.size() == 0 ) return;
-	if( m_pClientSocket->state() == QAbstractSocket::ConnectingState ) m_pClientSocket->waitForConnected(300);
-	if( m_pClientSocket->state() == QAbstractSocket::UnconnectedState ) return;
-	m_pClientSocket->write( data );
-	m_pClientSocket->waitForBytesWritten(100);
-	//app::setLog(5,QString("Connector::sendData %1 bytes [%2]").arg(data.size()).arg(QString(data)));
-	//app::setLog(6,QString("Connector::sendData [%2]").arg(QString(data.toHex())));
-}
-
-void Connector::sendInit()
+void Connector::openTunnel()
 {
 	myproto::Pkt pkt;
 	pkt.head.channel = myproto::Channel::comunication;
@@ -194,17 +167,13 @@ void Connector::parsPktAuth(const myproto::Pkt &pkt)
 			if( ba.toUShort() != 1 ){
 				m_pSocket->close();
 			}else{
-				if( m_target.scheme().toLower() == "tcp" ){
-					if( m_pTcpServer->listen( QHostAddress::LocalHost ) ){
-						m_localPort = m_pTcpServer->serverPort();
-					}
-				}
+				emit signal_accessGaranted();
 			}
 		break;
 		case myproto::PktType::data:
 			ba = myproto::findData( pkt, myproto::DataType::data );
 			app::setLog(3,QString("Connector::parsPktAuth server data [%1]").arg(QString(ba)));
-			sendClientData( ba );
+			emit signal_newData( ba );
 		break;
 	}
 }

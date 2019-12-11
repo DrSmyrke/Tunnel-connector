@@ -28,9 +28,9 @@ TEMPLATE = app
 SOURCES += main.cpp \
     connector.cpp \
     global.cpp \
+    localserver.cpp \
     mainwindow.cpp \
     myfunctions.cpp \
-    mylist.cpp \
     myproto.cpp
 
 exists(./gitversion.pri):include(./gitversion.pri)
@@ -49,9 +49,9 @@ build_pass:CONFIG(debug, debug|release) {
 HEADERS += \
     connector.h \
     global.h \
+    localserver.h \
     mainwindow.h \
     myfunctions.h \
-    mylist.h \
     myproto.h
 
 DISTFILES += \
