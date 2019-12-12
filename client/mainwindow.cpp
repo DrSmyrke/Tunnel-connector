@@ -10,7 +10,7 @@ MainWindow::MainWindow(QWidget *parent)
 {
 	m_pTimer = new QTimer( this );
 		m_pTimer->setInterval( 100 );
-	m_connector = new Connector( this );
+	m_pConnector = new Connector( this );
 	m_pServer = new LocalServer( this );
 
 	ui->setupUi(this);
@@ -39,15 +39,21 @@ MainWindow::MainWindow(QWidget *parent)
 		if( !url.isValid() || url.port() < 1 ){
 			ui->addAddressBox->setText( "tcp://" );
 		}else{
-			m_connector->setTarget( url );
+			m_pConnector->setTarget( url );
 		}
 	} );
-	connect( m_connector, &Connector::signal_stateChanged, this, [this](const uint8_t state){
+	connect( m_pConnector, &Connector::signal_stateChanged, this, [this](const uint8_t state){
 		ui->statusL->setText( setColorText( state ) );
 	} );
 	connect( ui->connectB, &QPushButton::clicked, this, [this](){
-		m_connector->init();
+		m_pConnector->init();
 	} );
+	connect( m_pConnector, &Connector::signal_accessGaranted, this, [this](){
+		m_pServer->run();
+		ui->statusL->setText( setColorText( m_pConnector->getState() ) );
+	} );
+	connect( m_pConnector, &Connector::signal_newData, m_pServer, &LocalServer::slot_incommingData );
+	connect( m_pServer, &LocalServer::signal_newData, m_pConnector, &Connector::slot_incomingData );
 
 	ui->connectB->setText( tr("CONNECT") );
 	ui->serverAddrBox->setText( app::conf.server );
@@ -61,7 +67,7 @@ MainWindow::MainWindow(QWidget *parent)
 
 MainWindow::~MainWindow()
 {
-	m_connector->stop();
+	m_pConnector->stop();
 	if( m_pTimer->isActive() ) m_pTimer->stop();
 	delete ui;
 }
@@ -102,6 +108,7 @@ QString MainWindow::setColorText(const uint8_t state) const
 			text = tr("Disconnected");
 			ui->connectB->setText( tr("CONNECT") );
 			ui->connectB->setEnabled( true );
+			m_pServer->stop();
 		break;
 		default:
 			res += "gray";
@@ -109,6 +116,9 @@ QString MainWindow::setColorText(const uint8_t state) const
 			ui->connectB->setEnabled( true );
 		break;
 	}
+
+	text += m_pServer->getState();
+
 	res += ";\">" + text + "</span>";
 
 	return res;

@@ -1,4 +1,5 @@
 #include "connector.h"
+#include "myfunctions.h"
 
 Connector::Connector(QObject *parent)
 	: QObject(parent)
@@ -40,7 +41,7 @@ void Connector::slot_incomingData(const QByteArray &data)
 	m_pkt.rawData.clear();
 	m_pkt.head.channel = myproto::Channel::auth;
 	m_pkt.head.type = myproto::PktType::data;
-	myproto::addData( m_pkt.rawData, myproto::DataType::data, data );
+	m_pkt.rawData.append( data );
 	sendData( myproto::buidPkt( m_pkt, app::conf.user.pass.toUtf8() ) );
 }
 
@@ -48,13 +49,16 @@ void Connector::slot_stateChange(const QAbstractSocket::SocketState socketState)
 {
 	switch (socketState) {
 		case QAbstractSocket::UnconnectedState:
-			emit signal_stateChanged( StatusConnectState::disconnected );
+			m_state = StatusConnectState::disconnected;
+			emit signal_stateChanged( m_state );
 		break;
 		case QAbstractSocket::ConnectingState:
-			emit signal_stateChanged( StatusConnectState::processing );
+			m_state = StatusConnectState::processing;
+			emit signal_stateChanged( m_state );
 		break;
 		case QAbstractSocket::ConnectedState:
-			emit signal_stateChanged( StatusConnectState::normal );
+			m_state = StatusConnectState::normal;
+			emit signal_stateChanged( m_state );
 			openTunnel();
 		break;
 		default: break;
@@ -67,7 +71,7 @@ void Connector::slot_readyRead()
 		m_rxBuff.append( m_pSocket->read(1024) );
 	}
 
-	app::setLog(3,QString("Connector::slot_readyRead [%1]").arg(QString(m_rxBuff.toHex())));
+	//app::setLog(6,QString("Connector::slot_readyRead [%1]").arg(QString(m_rxBuff.toHex())));
 
 
 	myproto::Pkt pkt = myproto::parsPkt( m_rxBuff );
@@ -83,7 +87,11 @@ void Connector::slot_readyRead()
 	}
 
 	if( pkt.head.channel == myproto::Channel::auth ){
-		myproto::parsData( pkt, app::conf.user.pass.toUtf8() );
+		if( pkt.head.type == myproto::PktType::data ){
+			mf::XOR( pkt.rawData, app::conf.user.pass.toUtf8() );
+		}else{
+			myproto::parsData( pkt, app::conf.user.pass.toUtf8() );
+		}
 	}else{
 		myproto::parsData( pkt );
 	}
@@ -94,7 +102,10 @@ void Connector::slot_readyRead()
 	}
 
 	// Если данные еще есть, выводим
-	if( m_rxBuff.size() > 0 ) qDebug()<<m_rxBuff.toHex();
+	if( m_rxBuff.size() > 0 ){
+		//qDebug()<<m_rxBuff.toHex();
+		slot_readyRead();
+	}
 }
 
 void Connector::sendData(const QByteArray &data)
@@ -105,7 +116,7 @@ void Connector::sendData(const QByteArray &data)
 	m_pSocket->write( data );
 	m_pSocket->waitForBytesWritten(100);
 	//app::setLog(5,QString("Connector::sendData %1 bytes [%2]").arg(data.size()).arg(QString(data)));
-	app::setLog(3,QString("Connector::sendData [%1]").arg(QString(data.toHex())));
+	//app::setLog(6,QString("Connector::sendData [%1]").arg(QString(data.toHex())));
 }
 
 void Connector::openTunnel()
@@ -149,7 +160,7 @@ void Connector::parsPktAuth(const myproto::Pkt &pkt)
 	switch (pkt.head.type) {
 		case myproto::PktType::hello:
 			ba = myproto::findData( pkt, myproto::DataType::text );
-			app::setLog(3,QString("Connector::parsPktAuth server hello [%1]").arg(QString(ba)));
+			app::setLog(4,QString("Connector::parsPktAuth server hello [%1]").arg(QString(ba)));
 			if( ba != "hello" ){
 				m_pSocket->close();
 			}else{
@@ -163,7 +174,7 @@ void Connector::parsPktAuth(const myproto::Pkt &pkt)
 		break;
 		case myproto::PktType::response:
 			ba = myproto::findData( pkt, myproto::DataType::boolean );
-			app::setLog(3,QString("Connector::parsPktAuth server response [%1]").arg(QString(ba)));
+			app::setLog(4,QString("Connector::parsPktAuth server response [%1]").arg(QString(ba)));
 			if( ba.toUShort() != 1 ){
 				m_pSocket->close();
 			}else{
@@ -171,9 +182,9 @@ void Connector::parsPktAuth(const myproto::Pkt &pkt)
 			}
 		break;
 		case myproto::PktType::data:
-			ba = myproto::findData( pkt, myproto::DataType::data );
-			app::setLog(3,QString("Connector::parsPktAuth server data [%1]").arg(QString(ba)));
-			emit signal_newData( ba );
+			//ba = myproto::findData( pkt, myproto::DataType::data );
+			app::setLog(4,QString("Connector::parsPktAuth server data [%1] %2 bytes").arg(QString(pkt.rawData)).arg( pkt.rawData.size() ));
+			emit signal_newData( pkt.rawData );
 		break;
 	}
 }

@@ -22,7 +22,7 @@ private slots:
 private:
 	Ui::MainWindow *ui;
 	QTimer* m_pTimer;
-	Connector* m_connector;
+	Connector* m_pConnector;
 	LocalServer* m_pServer;
 
 	QString setColorText(const uint8_t state = StatusConnectState::disconnected) const;

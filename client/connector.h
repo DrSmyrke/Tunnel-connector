@@ -17,6 +17,7 @@ public:
 	void setTarget(const QUrl &url){ m_target = url; }
 	bool init();
 	void stop();
+	uint8_t getState() const { return m_state; }
 public slots:
 	void slot_incomingData(const QByteArray &data);
 signals:
@@ -32,6 +33,7 @@ private:
 	QTcpSocket* m_pSocket;
 	QByteArray m_rxBuff;
 	myproto::Pkt m_pkt;
+	uint8_t m_state;
 
 	void openTunnel();
 	void sendData(const QByteArray &data);
