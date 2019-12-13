@@ -47,6 +47,7 @@ private:
 	User m_user;
 	QTcpSocket* m_pTargetTcp;
 	QUdpSocket* m_pTargetUdp;
+	QUrl m_target;
 
 	void sendToClient(const QByteArray &data);
 	void sendToTarget(const QByteArray &data);
