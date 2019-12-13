@@ -55,6 +55,8 @@ namespace app {
 	void loadUsers();
 	void saveUsers();
 	bool isAccess(const QString &login, const QUrl &url);
+
+	void loadResources(const QString &fileName, QByteArray &data);
 }
 
 #endif // GLOBAL_H

@@ -18,6 +18,8 @@ namespace app {
 		app::conf.verbose		= settings.value("SERVER/verbose", app::conf.verbose).toBool();
 
 		app::loadUsers();
+
+		if( settings.allKeys().size() == 0 ) app::conf.settingsSave = true;
 	}
 
 	void saveSettings()
@@ -163,6 +165,18 @@ namespace app {
 		}
 
 		return access;
+	}
+
+	void loadResources(const QString &fileName, QByteArray &data)
+	{
+		data.clear();
+		QFile file;
+
+		file.setFileName( fileName );
+		if(file.open(QIODevice::ReadOnly)){
+			while (!file.atEnd()) data.append( file.readAll() );
+			file.close();
+		}
 	}
 
 

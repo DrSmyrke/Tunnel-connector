@@ -26,7 +26,9 @@ QMAKE_CXXFLAGS += "-std=c++11"
 TEMPLATE = app
 
 SOURCES += main.cpp \
+    controlserver.cpp \
     global.cpp \
+    http.cpp \
     myfunctions.cpp \
     myproto.cpp \
     server.cpp
@@ -40,11 +42,16 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
 
 HEADERS += \
+    controlserver.h \
     global.h \
+    http.h \
     myfunctions.h \
     myproto.h \
     server.h
 	
 DISTFILES += \
     gitversion.pri
+
+RESOURCES += \
+    resources.qrc
 

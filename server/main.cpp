@@ -1,6 +1,6 @@
 #include <QCoreApplication>
 #include "server.h"
-//#include "controlserver.h"
+#include "controlserver.h"
 #include "global.h"
 
 int main(int argc, char *argv[])
@@ -17,8 +17,8 @@ int main(int argc, char *argv[])
 	Server server;
 	if( !server.run() ) return 0;
 
-	//ControlServer controlServer;
-	//if( !controlServer.run() ) return 0;
+	ControlServer controlServer;
+	if( !controlServer.run() ) return 0;
 
 	return a.exec();
 }
