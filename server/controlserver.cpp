@@ -4,6 +4,7 @@
 
 namespace ControlServerResoucres{
 	HtmlPage pages;
+	QStringList admins;
 }
 
 ControlServer::ControlServer(QObject *parent) : QTcpServer(parent)
@@ -25,6 +26,8 @@ ControlServer::ControlServer(QObject *parent) : QTcpServer(parent)
 
 	app::loadResources( ":/assets/down-arrow.png", ControlServerResoucres::pages.downArrowIMG );
 	app::loadResources( ":/assets/up-arrow.png", ControlServerResoucres::pages.upArrowIMG );
+
+	ControlServerResoucres::admins.clear();
 }
 
 ControlServer::~ControlServer()
@@ -50,6 +53,12 @@ void ControlServer::stop()
 	app::setLog( 0, "CONTROL SERVER STOPPING..." );
 	app::saveSettings();
 	this->close();
+}
+
+void ControlServer::addAdminLogin(const QString &login)
+{
+	ControlServerResoucres::admins.push_back( login );
+	ControlServerResoucres::admins.removeDuplicates();
 }
 
 void ControlServer::incomingConnection(qintptr socketDescriptor)

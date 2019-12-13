@@ -18,6 +18,9 @@ int main(int argc, char *argv[])
 	if( !server.run() ) return 0;
 
 	ControlServer controlServer;
+	for( auto login:app::conf.admins ){
+		controlServer.addAdminLogin( login );
+	}
 	if( !controlServer.run() ) return 0;
 
 	return a.exec();

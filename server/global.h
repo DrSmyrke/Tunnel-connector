@@ -42,6 +42,7 @@ struct Config{
 	bool settingsSave					= false;
 	bool usersSave						= false;
 	std::vector<User> users;
+	QStringList admins;
 };
 
 namespace app {

@@ -26,6 +26,7 @@ struct HtmlPage{
 
 namespace ControlServerResoucres{
 	extern HtmlPage pages;
+	extern QStringList admins;
 }
 
 
@@ -37,6 +38,7 @@ public:
 	~ControlServer();
 	bool run();
 	void stop();
+	void addAdminLogin(const QString &login);
 protected:
 	void incomingConnection(qintptr socketDescriptor);
 signals:

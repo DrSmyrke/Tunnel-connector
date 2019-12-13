@@ -16,6 +16,7 @@ namespace app {
 		app::conf.controlPort	= settings.value("SERVER/controlPort", app::conf.controlPort).toUInt();
 		app::conf.logLevel		= settings.value("SERVER/logLevel", app::conf.logLevel).toUInt();
 		app::conf.verbose		= settings.value("SERVER/verbose", app::conf.verbose).toBool();
+		app::conf.admins		= settings.value("SERVER/admins", "").toString().split( "," );
 
 		app::loadUsers();
 
@@ -31,6 +32,7 @@ namespace app {
 		settings.setValue("SERVER/controlPort", app::conf.controlPort);
 		settings.setValue("SERVER/logLevel", app::conf.logLevel);
 		settings.setValue("SERVER/verbose", app::conf.verbose);
+		settings.setValue("SERVER/admins", app::conf.admins.join( "," ));
 	}
 
 	bool parsArgs(int argc, char *argv[])
