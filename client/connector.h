@@ -18,6 +18,7 @@ public:
 	bool init();
 	void stop();
 	uint8_t getState() const { return m_state; }
+	QString getStateString() const { return m_stateStr; }
 public slots:
 	void slot_incomingData(const QByteArray &data);
 signals:
@@ -34,6 +35,7 @@ private:
 	QByteArray m_rxBuff;
 	myproto::Pkt m_pkt;
 	uint8_t m_state;
+	QString m_stateStr;
 
 	void openTunnel();
 	void sendData(const QByteArray &data);

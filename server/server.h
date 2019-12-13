@@ -54,7 +54,7 @@ private:
 	void parsPktCommunication(const myproto::Pkt &pkt);
 	void parsPktAuth(const myproto::Pkt &pkt);
 	void sendBye();
-	bool addConnect(const QUrl &url);
+	bool addConnect();
 };
 
 #endif // SERVER_H

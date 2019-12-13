@@ -197,7 +197,6 @@ void ServerClient::parsPktAuth(const myproto::Pkt &pkt)
 	QByteArray url;
 	QByteArray id;
 	QByteArray boolean;
-	QUrl targetUrl;
 
 	switch (pkt.head.type) {
 		case myproto::PktType::hello:
@@ -219,15 +218,21 @@ void ServerClient::parsPktAuth(const myproto::Pkt &pkt)
 			id = myproto::findData( pkt, myproto::DataType::id );
 			boolean = myproto::findData( pkt, myproto::DataType::boolean );
 			//app::setLog(4,QString("ServerClient::parsPktAuth client request url [%1] %2 %3").arg(QString(url)).arg(QString(id)).arg(QString(boolean)));
-			targetUrl.setUrl( url );
+			m_target.setUrl( url );
 			m_pkt.head.channel = myproto::Channel::auth;
 			m_pkt.head.type = myproto::PktType::response;
 			myproto::addData( m_pkt.rawData, myproto::DataType::id, id );
 			//TODO: Реализовать запрет коннекта без разрешения
-			if( addConnect( targetUrl ) ){
-				myproto::addData( m_pkt.rawData, myproto::DataType::boolean, "1" );
+			if( app::isAccess( m_user.login, m_target ) ){
+				if( addConnect() ){
+					myproto::addData( m_pkt.rawData, myproto::DataType::boolean, "1" );
+				}else{
+					myproto::addData( m_pkt.rawData, myproto::DataType::boolean, "0" );
+					myproto::addData( m_pkt.rawData, myproto::DataType::text, "Unknow proto" );
+				}
 			}else{
 				myproto::addData( m_pkt.rawData, myproto::DataType::boolean, "0" );
+				myproto::addData( m_pkt.rawData, myproto::DataType::text, "Access denied! Please Wait." );
 			}
 			sendToClient( myproto::buidPkt( m_pkt, m_user.pass.toUtf8() ) );
 		break;
@@ -249,11 +254,9 @@ void ServerClient::sendBye()
 	this->close();
 }
 
-bool ServerClient::addConnect(const QUrl &url)
+bool ServerClient::addConnect()
 {
-	if( !url.isValid() ) return false;
-
-	m_target = url;
+	if( !m_target.isValid() ) return false;
 
 	if( m_target.scheme().toLower() == "tcp" ){
 		m_pTargetTcp->connectToHost( m_target.host(), m_target.port() );

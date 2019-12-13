@@ -176,7 +176,9 @@ void Connector::parsPktAuth(const myproto::Pkt &pkt)
 			ba = myproto::findData( pkt, myproto::DataType::boolean );
 			app::setLog(4,QString("Connector::parsPktAuth server response [%1]").arg(QString(ba)));
 			if( ba.toUShort() != 1 ){
-				m_pSocket->close();
+				m_state = StatusConnectState::error;
+				emit signal_stateChanged( m_state );
+				m_stateStr = myproto::findData( pkt, myproto::DataType::text );
 			}else{
 				emit signal_accessGaranted();
 			}

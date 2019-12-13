@@ -4,6 +4,7 @@
 #include <QString>
 #include <QDir>
 #include <QHostAddress>
+#include <QUrl>
 
 struct Host{
 	QHostAddress ip;
@@ -15,11 +16,11 @@ struct User{
 	QString pass;
 	uint32_t lastLoginTimestamp			= 0;
 	uint32_t maxConnections				= 37;
-	std::vector<Host> accessList;
-	std::vector<Host> blockList;
+	QStringList accessList;
 	uint32_t inBytes					= 0;
 	uint32_t outBytes					= 0;
 	uint32_t bytesMax					= 536870912;
+	QStringList requestAccess;
 };
 
 struct Config{
@@ -28,9 +29,11 @@ struct Config{
 #ifdef __linux__
 	QString logFile						= "/tmp/tunnelConnector.log";
 	QString usersFile					= "/etc/DrSmyrke/TunnelConnector/users.list";
+	QString confFile					= "/etc/DrSmyrke/TunnelConnector/config.ini";
 #elif _WIN32
 	QString logFile						= QDir::homePath() + "/tunnelConnector.log";
 	QString usersFile					= QDir::homePath() + "/TunnelConnector/users.list";
+	QString confFile					= QDir::homePath() + "/TunnelConnector/config.ini";
 #endif
 	QString appName						= "tunnelConnector";
 	QString version						= "0.1";
@@ -39,7 +42,6 @@ struct Config{
 	bool settingsSave					= false;
 	bool usersSave						= false;
 	std::vector<User> users;
-	QByteArray realmString				= "TunnelConnector";
 };
 
 namespace app {
@@ -52,6 +54,7 @@ namespace app {
 
 	void loadUsers();
 	void saveUsers();
+	bool isAccess(const QString &login, const QUrl &url);
 }
 
 #endif // GLOBAL_H

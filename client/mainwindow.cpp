@@ -100,7 +100,8 @@ QString MainWindow::setColorText(const uint8_t state) const
 		break;
 		case StatusConnectState::error:
 			res += "red";
-			text = tr("Error");
+			text = m_pConnector->getStateString();
+			if( text.isEmpty() ) text = tr("Unknown error");
 			ui->connectB->setEnabled( true );
 		break;
 		case StatusConnectState::disconnected:
